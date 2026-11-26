@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Tenant Admin Console Application Controller (RotoWagon Equipment)
  * Powered by PlatformStore, RBAC Security, FileVault, and Full-Spec QRCodeEngine
  */
@@ -1382,15 +1382,15 @@
         <h3 class="card-title" style="margin-bottom:14px;">Lead Capture Channels</h3>
         <div style="display:flex;flex-direction:column;gap:12px;font-size:13px;">
           <div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg-card);border-radius:8px;">
-            <span>📷 Mobile vCard Camera Scan</span>
+            <span>Mobile vCard Camera Scan</span>
             <strong>64%</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg-card);border-radius:8px;">
-            <span>🎪 Trade Fair / Exhibition Booth</span>
+            <span>Trade Fair / Exhibition Booth</span>
             <strong>24%</strong>
           </div>
           <div style="display:flex;justify-content:space-between;padding:10px;background:var(--bg-card);border-radius:8px;">
-            <span>💬 WhatsApp &amp; Direct Referral</span>
+            <span>WhatsApp &amp; Direct Referral</span>
             <strong>12%</strong>
           </div>
         </div>
