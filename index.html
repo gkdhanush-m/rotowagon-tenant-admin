@@ -289,7 +289,7 @@
       } catch (e) {}
     })();
 
-    const TenantLoginApp = {
+    window.TenantLoginApp = {
       fill: function (email, pass) {
         document.getElementById('login-email').value = email;
         document.getElementById('login-password').value = pass;
