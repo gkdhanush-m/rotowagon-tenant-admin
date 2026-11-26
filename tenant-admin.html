@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Tenant Admin Console — RotoWagon Equipment</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏢</text></svg>">
+  <link rel="stylesheet" href="admin.css">
+  <script>
+    (function () {
+      try {
+        var raw = localStorage.getItem('mecard_platform_v4');
+        var data = raw ? JSON.parse(raw) : null;
+        var session = data && data.session ? data.session : null;
+        if (!session || (session.role !== 'tenant_admin' && session.role !== 'master_admin')) {
+          window.location.replace('tenant-login.html');
+        }
+      } catch (e) {
+        window.location.replace('tenant-login.html');
+      }
+    })();
+  </script>
+</head>
+<body>
+
+  <!-- RBAC Access Guard Overlay (Shown if user lacks Tenant Admin access) -->
+  <div class="rbac-guard-overlay" id="rbac-guard-overlay" style="display:none;">
+    <div class="rbac-guard-card">
+      <div class="rbac-guard-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </div>
+      <h2>Tenant Admin Access Restricted</h2>
+      <p id="rbac-guard-desc">Managing this organization requires authenticating as Tenant Admin or Master Admin.</p>
+      <div class="rbac-guard-actions">
+        <a class="btn-primary" href="tenant-login.html" style="text-decoration:none;justify-content:center;">Sign In to Tenant Portal</a>
+        <a class="btn-secondary" href="index.html" style="text-decoration:none;justify-content:center;">Return to Visiting Card</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Navigation Header -->
+  <header class="top-bar">
+    <div class="brand-section">
+      <div class="brand-lockup-inner">
+        <div class="brand-logo-badge" id="top-brand-mark">RW</div>
+        <div class="brand-info">
+          <div class="brand-title-wrap">
+            <span class="brand-title" id="top-brand-name">RotoWagon</span>
+          </div>
+          <div class="brand-subtitle-wrap">
+            <span class="brand-subtitle">Commercial Bakery OS</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn-sidebar-toggle hamburger-btn" id="btn-sidebar-toggle" onclick="TenantAdminApp.toggleSidebar()" title="Toggle navigation menu" aria-label="Toggle navigation menu">
+        <!-- Desktop Chevron: < (expanded) / > (collapsed) -->
+        <svg class="icon-desktop-chevron" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        <!-- Mobile Hamburger: 3 lines when drawer is closed -->
+        <svg class="icon-mobile-hamburger" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="3" y1="12" x2="21" y2="12"/>
+          <line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+        <!-- Mobile Close: X when drawer is open -->
+        <svg class="icon-mobile-close" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+      <span class="mobile-admin-title">Tenant Admin</span>
+    </div>
+
+    <!-- Center Executive Search Input -->
+    <div class="topbar-search-wrap">
+      <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" class="topbar-search-inp" id="topbar-global-search" placeholder="Search machines, leads, catalogues..." aria-label="Search" oninput="TenantAdminApp.handleGlobalSearch(this.value)">
+      <kbd class="search-shortcut">⌘K</kbd>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="top-bar-actions">
+      <!-- Active Role Chip -->
+      <button class="role-chip-btn" onclick="TenantAdminApp.openAuthModal()" title="Switch Account / View Permissions">
+        <span class="role-dot-sm" id="admin-role-dot" style="background:#b8501e;"></span>
+        <span id="admin-role-label">Tenant Admin</span>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button class="theme-btn" onclick="TenantAdminApp.toggleTheme()" title="Toggle Light / Dark Mode" aria-label="Toggle Theme">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+      </button>
+
+      <!-- Public Visiting Card Link -->
+      <a class="public-link-btn" href="index.html" title="Open Public Digital Visiting Card">
+        <span class="public-link-label">Public Card</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+
+      <!-- Sign Out Button -->
+      <button class="btn-secondary-sm" onclick="TenantAdminApp.logout()" title="Log out of session" style="font-weight:600;">
+        <span>Log Out</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Layout Shell -->
+  <div class="admin-layout" id="admin-layout">
+    <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="TenantAdminApp.closeSidebar()"></div>
+
+    <!-- Navigation Sidebar -->
+    <aside class="admin-sidebar" id="admin-sidebar">
+      <div class="sidebar-scroll">
+        <nav class="sidebar-nav" id="tenant-sidebar-nav">
+          <div class="nav-section-title">Core Operations</div>
+          <button class="sidebar-item active" data-view="view-dashboard" onclick="TenantAdminApp.showView('view-dashboard')" title="Dashboard">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+            <span>Dashboard</span>
+          </button>
+          <button class="sidebar-item" data-view="view-company" onclick="TenantAdminApp.showView('view-company')" title="Company &amp; Branding">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Company &amp; Branding</span>
+          </button>
+          <button class="sidebar-item" data-view="view-products" onclick="TenantAdminApp.showView('view-products')" title="Products &amp; Catalog">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <span>Products &amp; Catalog</span>
+            <span class="sidebar-badge" id="badge-products">0</span>
+          </button>
+          <button class="sidebar-item" data-view="view-categories" onclick="TenantAdminApp.showView('view-categories')" title="Categories">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            <span>Categories</span>
+          </button>
+          <button class="sidebar-item" data-view="view-catalogues" onclick="TenantAdminApp.showView('view-catalogues')" title="Catalogues &amp; PDF">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <span>Catalogues &amp; PDF</span>
+            <span class="sidebar-badge" id="badge-catalogues">0</span>
+          </button>
+
+          <div class="nav-section-title" style="margin-top:14px;">Lead Generation</div>
+          <button class="sidebar-item" data-view="view-events" onclick="TenantAdminApp.showView('view-events')" title="Events &amp; Campaigns">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span>Events &amp; Campaigns</span>
+            <span class="sidebar-badge" id="badge-events">0</span>
+          </button>
+          <button class="sidebar-item" data-view="view-qr" onclick="TenantAdminApp.showView('view-qr')" title="QR Codes Studio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            <span>QR Codes Studio</span>
+            <span class="sidebar-badge" id="badge-qr">0</span>
+          </button>
+          <button class="sidebar-item" data-view="view-templates" onclick="TenantAdminApp.showView('view-templates')" title="Landing Templates">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <span>Landing Templates</span>
+          </button>
+          <button class="sidebar-item" data-view="view-leads" onclick="TenantAdminApp.showView('view-leads')" title="Leads / CRM">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
+            <span>Leads / CRM</span>
+            <span class="sidebar-badge" id="badge-leads">0</span>
+          </button>
+          <button class="sidebar-item" data-view="view-analytics" onclick="TenantAdminApp.showView('view-analytics')" title="Analytics &amp; Funnel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+            <span>Analytics &amp; Funnel</span>
+          </button>
+          <button class="sidebar-item" data-view="view-exhibition" onclick="TenantAdminApp.showView('view-exhibition')" title="Quick Lead (Booth)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+            <span>Quick Lead (Booth)</span>
+            <span class="sidebar-badge live">Live</span>
+          </button>
+
+          <div class="nav-section-title" style="margin-top:14px;">Access &amp; Security</div>
+          <button class="sidebar-item" data-view="view-tenant-permissions" onclick="TenantAdminApp.showView('view-tenant-permissions')" title="My Permissions">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span>My Permissions</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-footer-row">
+          <div class="user-snippet" onclick="TenantAdminApp.openAuthModal()" style="cursor:pointer;flex:1;min-width:0;" title="View User Session">
+            <div class="user-avatar" id="sidebar-user-avatar">RS</div>
+            <div class="user-details">
+              <span class="user-name" id="sidebar-user-name">Rajesh Sharma</span>
+              <span class="user-role" id="sidebar-user-role">Tenant Admin</span>
+            </div>
+          </div>
+          <button class="btn-sidebar-signout" onclick="TenantAdminApp.signOut()" title="Log Out of Session" aria-label="Log Out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Log Out</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main View Workspace -->
+    <main class="admin-main">
+
+      <!-- VIEW 1: DASHBOARD -->
+      <section class="view-section active" id="view-dashboard">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Executive Dashboard</h1>
+            <p class="view-subtitle">Live scan metrics, catalog activity, and recent inquiries</p>
+          </div>
+          <div class="view-actions">
+            <div class="range-group">
+              <button class="range-btn" data-range="7d" onclick="TenantAdminApp.setTimeRange('7d')">7D</button>
+              <button class="range-btn active" data-range="30d" onclick="TenantAdminApp.setTimeRange('30d')">30D</button>
+              <button class="range-btn" data-range="90d" onclick="TenantAdminApp.setTimeRange('90d')">90D</button>
+            </div>
+            <button class="btn-primary" onclick="TenantAdminApp.showView('view-qr')">+ New QR Campaign</button>
+          </div>
+        </div>
+
+        <div class="kpi-grid" id="dashboard-kpis"></div>
+
+        <div class="dashboard-split-grid">
+          <div class="admin-card">
+            <div class="card-header-row">
+              <h2 class="card-title">Recent Inquiries &amp; Leads</h2>
+              <button class="corporate-action-btn" onclick="TenantAdminApp.showView('view-leads')"><span>Leads CRM</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+            </div>
+            <div id="dashboard-recent-leads"></div>
+          </div>
+
+          <div class="admin-card">
+            <div class="card-header-row">
+              <h2 class="card-title">Active Machinery Catalog</h2>
+              <button class="corporate-action-btn" onclick="TenantAdminApp.showView('view-products')"><span>Product Catalog</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+            </div>
+            <div id="dashboard-products-peek"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 2: COMPANY & BRANDING -->
+      <section class="view-section" id="view-company">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Company Profile &amp; Branding</h1>
+            <p class="view-subtitle">Corporate identity, primary contacts, and custom theme accent</p>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <form id="form-company" onsubmit="TenantAdminApp.saveCompanyProfile(event)">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="cmp-name">Company Legal Name *</label>
+                <input class="form-control" id="cmp-name" type="text" required>
+              </div>
+              <div class="form-group">
+                <label for="cmp-short">Brand Code / Short Mark (2-3 chars)</label>
+                <input class="form-control" id="cmp-short" type="text" maxlength="4">
+              </div>
+              <div class="form-group">
+                <label for="cmp-rep-name">Sales / Executive Representative *</label>
+                <input class="form-control" id="cmp-rep-name" type="text" required>
+              </div>
+              <div class="form-group">
+                <label for="cmp-rep-role">Representative Title</label>
+                <input class="form-control" id="cmp-rep-role" type="text">
+              </div>
+              <div class="form-group">
+                <label for="cmp-email">Primary Inquiry Email *</label>
+                <input class="form-control" id="cmp-email" type="email" required>
+              </div>
+              <div class="form-group">
+                <label for="cmp-phone">Direct Phone</label>
+                <input class="form-control" id="cmp-phone" type="tel">
+              </div>
+              <div class="form-group">
+                <label for="cmp-wa">WhatsApp Commercial Number</label>
+                <input class="form-control" id="cmp-wa" type="tel">
+              </div>
+              <div class="form-group">
+                <label for="cmp-web">Official Website</label>
+                <input class="form-control" id="cmp-web" type="url">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="cmp-tagline">Company Value Proposition / Tagline</label>
+              <input class="form-control" id="cmp-tagline" type="text">
+            </div>
+
+            <div class="form-group">
+              <label for="cmp-location">Office / Factory Address</label>
+              <textarea class="form-control" id="cmp-location" rows="2"></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="cmp-accent">Brand Primary Accent Color</label>
+              <div style="display:flex;gap:12px;align-items:center;">
+                <input id="cmp-accent" type="color" style="width:48px;height:42px;border:none;border-radius:8px;cursor:pointer;background:none;" onchange="document.getElementById('cmp-accent-hex').value=this.value">
+                <input class="form-control" id="cmp-accent-hex" type="text" style="width:120px;" placeholder="#b8501e" onchange="document.getElementById('cmp-accent').value=this.value">
+                <span class="text-muted" style="font-size:12px;">Syncs live to Public Visiting Card &amp; QR Codes</span>
+              </div>
+            </div>
+
+            <div style="margin-top:20px;">
+              <button class="btn-primary" type="submit">Save Company Profile</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- VIEW 3: PRODUCTS & CATALOG -->
+      <section class="view-section" id="view-products">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Products &amp; Equipment Catalog</h1>
+            <p class="view-subtitle">Manage machines, technical specifications, and public showcase status</p>
+          </div>
+          <button class="btn-primary" onclick="TenantAdminApp.startProductWizard()">+ Add New Product</button>
+        </div>
+
+        <div class="admin-card" style="padding:0;overflow:hidden;">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Product / Equipment</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Specifications</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="products-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 3B: PRODUCT 5-STEP WIZARD -->
+      <section class="view-section" id="product-wizard-view" style="display:none;">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title" id="pw-title">New Product Wizard</h1>
+            <p class="view-subtitle">Complete each step with validated specifications before publishing</p>
+          </div>
+          <button class="btn-secondary" onclick="TenantAdminApp.showView('view-products')">Cancel</button>
+        </div>
+
+        <div class="admin-card" id="product-wizard" style="max-width:780px;margin:0 auto;">
+          <div class="wizard-stepper">
+            <div class="wizard-step-node active"><span class="step-num">1</span><span class="wizard-step-label">Basic Info</span></div>
+            <div class="wizard-step-node"><span class="step-num">2</span><span class="wizard-step-label">Ordering</span></div>
+            <div class="wizard-step-node"><span class="step-num">3</span><span class="wizard-step-label">Specs</span></div>
+            <div class="wizard-step-node"><span class="step-num">4</span><span class="wizard-step-label">Highlights</span></div>
+            <div class="wizard-step-node"><span class="step-num">5</span><span class="wizard-step-label">Review</span></div>
+          </div>
+
+          <div id="pw-error-banner" class="inline-error-box" style="display:none;"></div>
+
+          <!-- Step 1 -->
+          <div class="wizard-step-body active">
+            <h3 class="wizard-subhead">Step 1: Basic Product Details</h3>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="pw-name">Product / Machine Name *</label>
+                <input class="form-control" id="pw-name" type="text" placeholder="e.g. Tunnel Proofer Chamber">
+              </div>
+              <div class="form-group">
+                <label for="pw-code">Model Code *</label>
+                <input class="form-control" id="pw-code" type="text" placeholder="e.g. RW-TP-800">
+              </div>
+              <div class="form-group">
+                <label for="pw-cat">Category</label>
+                <select class="form-control" id="pw-cat"></select>
+              </div>
+              <div class="form-group">
+                <label for="pw-brand">Brand</label>
+                <input class="form-control" id="pw-brand" type="text" placeholder="RotoWagon">
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="pw-tagline">Short Description / Value Proposition</label>
+              <input class="form-control" id="pw-tagline" type="text" placeholder="Brief one-sentence technical summary">
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="wizard-step-body">
+            <h3 class="wizard-subhead">Step 2: Ordering &amp; Quantity Rules</h3>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="pw-sku">Internal SKU</label>
+                <input class="form-control" id="pw-sku" type="text" placeholder="e.g. OVN-800-EL">
+              </div>
+              <div class="form-group">
+                <label for="pw-unit">Unit Label</label>
+                <input class="form-control" id="pw-unit" type="text" value="Unit">
+              </div>
+              <div class="form-group">
+                <label for="pw-min">Minimum Order Qty</label>
+                <input class="form-control" id="pw-min" type="number" min="1" value="1">
+              </div>
+              <div class="form-group">
+                <label for="pw-max">Maximum Order Qty</label>
+                <input class="form-control" id="pw-max" type="number" min="1" value="20">
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="wizard-step-body">
+            <div class="card-header-row" style="margin-bottom:12px;">
+              <h3 class="wizard-subhead" style="margin:0;">Step 3: Technical Specifications</h3>
+              <button type="button" class="btn-secondary-sm" onclick="TenantAdminApp.addSpecRow()">+ Add Spec</button>
+            </div>
+            <div id="spec-builder-list"></div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="wizard-step-body">
+            <h3 class="wizard-subhead">Step 4: Status &amp; Visibility</h3>
+            <div class="form-group">
+              <label for="pw-status">Publish Status</label>
+              <select class="form-control" id="pw-status">
+                <option value="Active">Active (Visible on Public Enterprise Card)</option>
+                <option value="Draft">Draft (Hidden from Public Card)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Step 5 -->
+          <div class="wizard-step-body">
+            <h3 class="wizard-subhead">Step 5: Review &amp; Publish</h3>
+            <div id="product-review-summary"></div>
+          </div>
+
+          <div class="wizard-footer">
+            <button type="button" class="btn-secondary" id="pw-btn-back" onclick="TenantAdminApp.prevProductWizardStep()">Back</button>
+            <div style="display:flex;gap:10px;">
+              <button type="button" class="btn-primary" id="pw-btn-next" onclick="TenantAdminApp.nextProductWizardStep()">Next Step</button>
+              <button type="button" class="btn-success" id="pw-btn-publish" style="display:none;" onclick="TenantAdminApp.publishDraftProduct()">Publish Product</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 4: CATEGORIES -->
+      <section class="view-section" id="view-categories">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Categories</h1>
+            <p class="view-subtitle">Organize equipment lines and catalog filter chips</p>
+          </div>
+          <button class="btn-primary" onclick="TenantAdminApp.openCategoryModal()">+ Add Category</button>
+        </div>
+        <div class="cards-auto-grid" id="categories-grid"></div>
+      </section>
+
+      <!-- VIEW 5: CATALOGUES & PDF -->
+      <section class="view-section" id="view-catalogues">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Catalogues &amp; Brochures</h1>
+            <p class="view-subtitle">Manage downloadable PDF spec sheets and company catalogues</p>
+          </div>
+          <button class="btn-primary" onclick="TenantAdminApp.openCatalogueModal()">+ Add Document</button>
+        </div>
+        <div id="catalogues-list"></div>
+      </section>
+
+      <!-- VIEW 6: EVENTS & CAMPAIGNS -->
+      <section class="view-section" id="view-events">
+        <div class="view-header" style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+          <div>
+            <h1 class="view-title">Trade Shows &amp; Events</h1>
+            <p class="view-subtitle">Configure exhibition booths and track event-specific lead capture</p>
+          </div>
+          <button class="btn-primary" onclick="TenantAdminApp.openAddEventModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <span>Create Event</span>
+          </button>
+        </div>
+        <div id="events-list"></div>
+      </section>
+
+      <!-- VIEW 7: QR CODES STUDIO -->
+      <section class="view-section" id="view-qr">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">QR Codes Studio</h1>
+            <p class="view-subtitle">Full-spec vector QR codes for print, exhibition stands, and digital cards</p>
+          </div>
+        </div>
+        <div class="cards-auto-grid" id="qr-codes-grid"></div>
+      </section>
+
+      <!-- VIEW 8: LANDING TEMPLATES -->
+      <section class="view-section" id="view-templates">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Landing Templates</h1>
+            <p class="view-subtitle">Select public presentation layouts tailored to customer segments</p>
+          </div>
+        </div>
+        <div class="cards-auto-grid" id="landing-templates-grid"></div>
+      </section>
+
+      <!-- VIEW 9: LEADS CRM -->
+      <section class="view-section" id="view-leads">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Leads &amp; CRM Pipeline</h1>
+            <p class="view-subtitle">Track, qualify, and convert commercial equipment inquiries</p>
+          </div>
+          <div class="view-actions">
+            <button class="btn-secondary" onclick="TenantAdminApp.exportLeadsCSV()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="admin-card" style="margin-bottom:14px;padding:14px;">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+            <input class="form-control" id="crm-search" type="search" placeholder="Search by company, customer name, phone, machine..." style="max-width:320px;" oninput="TenantAdminApp.filterLeads()">
+            <div class="range-group" id="leads-status-filters">
+              <button class="range-btn active" data-status="All" onclick="TenantAdminApp.setLeadFilter('All')">All</button>
+              <button class="range-btn" data-status="New" onclick="TenantAdminApp.setLeadFilter('New')">New</button>
+              <button class="range-btn" data-status="Contacted" onclick="TenantAdminApp.setLeadFilter('Contacted')">Contacted</button>
+              <button class="range-btn" data-status="Qualified" onclick="TenantAdminApp.setLeadFilter('Qualified')">Qualified</button>
+              <button class="range-btn" data-status="Won" onclick="TenantAdminApp.setLeadFilter('Won')">Won</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-card" style="padding:0;overflow:hidden;">
+          <div class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Lead ID</th>
+                  <th>Customer / Company</th>
+                  <th>Contact</th>
+                  <th>Machine Interested</th>
+                  <th>Status</th>
+                  <th>Score</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="leads-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW 10: ANALYTICS -->
+      <section class="view-section" id="view-analytics">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Analytics &amp; Engagement Funnel</h1>
+            <p class="view-subtitle">Detailed breakdown of traffic sources, machine interest, and conversion</p>
+          </div>
+        </div>
+        <div id="analytics-container"></div>
+      </section>
+
+      <!-- VIEW 11: QUICK LEAD (BOOTH MODE) -->
+      <section class="view-section" id="view-exhibition">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Exhibition Kiosk Mode</h1>
+            <p class="view-subtitle">High-speed badge scan and lead capture for active trade shows</p>
+          </div>
+          <button class="btn-primary" onclick="TenantAdminApp.toggleFullscreen()">Fullscreen Mode</button>
+        </div>
+
+        <div class="admin-card" style="max-width:680px;margin:0 auto;">
+          <form id="booth-form" onsubmit="TenantAdminApp.submitBoothLead(event)">
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label for="bf-name">Customer Name *</label>
+                <input class="form-control" id="bf-name" type="text" placeholder="e.g. Ramesh Patel" required>
+              </div>
+              <div class="form-group">
+                <label for="bf-phone">Phone / WhatsApp *</label>
+                <input class="form-control" id="bf-phone" type="tel" placeholder="+91 98..." required>
+              </div>
+              <div class="form-group">
+                <label for="bf-company">Company / Bakery Name</label>
+                <input class="form-control" id="bf-company" type="text" placeholder="e.g. Supreme Bakers">
+              </div>
+              <div class="form-group">
+                <label for="bf-city">City / State</label>
+                <input class="form-control" id="bf-city" type="text" placeholder="e.g. Ahmedabad">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="bf-product">Equipment of Interest</label>
+              <select class="form-control" id="bf-product"></select>
+            </div>
+
+            <div class="form-group">
+              <label for="bf-notes">Booth Discussion Notes</label>
+              <textarea class="form-control" id="bf-notes" rows="3" placeholder="Requirement: Rotary Rack 16-tray, delivery by Q1..."></textarea>
+            </div>
+
+            <button class="btn-primary" type="submit" style="width:100%;height:48px;font-size:15px;">
+              <span>Capture Lead Instantly</span>
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- VIEW 12: TENANT PERMISSIONS & RBAC -->
+      <section class="view-section" id="view-tenant-permissions">
+        <div class="view-header">
+          <div>
+            <h1 class="view-title">Tenant Admin Role &amp; Permissions</h1>
+            <p class="view-subtitle">Active authorization grants and organization policy</p>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+            <div style="width:50px;height:50px;border-radius:12px;background:#ffedd5;color:#b8501e;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;">🏢</div>
+            <div>
+              <h2 style="font-size:18px;font-weight:700;margin-bottom:2px;">Tenant Admin Access Tier</h2>
+              <div class="text-muted" style="font-size:13px;">Organization: <strong id="tp-tenant-name">RotoWagon Equipment Pvt. Ltd.</strong></div>
+            </div>
+          </div>
+
+          <p style="font-size:14px;line-height:1.5;color:var(--text-main);margin-bottom:20px;">
+            As a <strong>Tenant Admin</strong>, you have full operational authority over your organization's digital visiting cards, machine catalog, PDF brochures, trade fair campaigns, and customer inquiries CRM. Platform-wide infrastructure (creating new tenants, modifying global system users) is reserved for Master Admins.
+          </p>
+
+          <h3 style="font-size:14px;font-weight:700;margin-bottom:12px;">Active Permissions for Your Account</h3>
+          <div id="tenant-permissions-list" style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:10px;"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- CRM LEAD DETAIL DRAWER -->
+  <div class="drawer-backdrop" id="drawer-backdrop" onclick="TenantAdminApp.closeLeadDrawer()"></div>
+  <aside class="crm-drawer" id="crm-drawer">
+    <div class="crm-drawer-head">
+      <strong>Lead Details &amp; Activity</strong>
+      <button class="btn-icon-close" onclick="TenantAdminApp.closeLeadDrawer()">&times;</button>
+    </div>
+    <div class="crm-drawer-body" id="crm-drawer-body"></div>
+  </aside>
+
+  <!-- MODAL: QR PREVIEW -->
+  <div class="admin-modal-backdrop" id="qr-preview-modal" onclick="if(event.target===this) TenantAdminApp.closeModal('qr-preview-modal')">
+    <div class="admin-modal-box" style="text-align:center;">
+      <div class="admin-modal-head">
+        <strong id="qr-modal-title">QR Code Preview</strong>
+        <button class="btn-icon-close" onclick="TenantAdminApp.closeModal('qr-preview-modal')">&times;</button>
+      </div>
+      <div class="admin-modal-body">
+        <div id="qr-modal-svg-box" style="display:inline-flex;padding:14px;background:#fff;border-radius:12px;border:1px solid var(--border);margin-bottom:14px;"></div>
+        <div style="display:flex;gap:8px;justify-content:center;">
+          <button class="btn-primary" id="qr-modal-dl-btn">Download SVG</button>
+          <button class="btn-secondary" onclick="TenantAdminApp.closeModal('qr-preview-modal')">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / CREATE EVENT -->
+  <div class="admin-modal-backdrop" id="modal-add-event" onclick="if(event.target===this) TenantAdminApp.closeModal('modal-add-event')">
+    <div class="admin-modal-box" style="max-width:560px;">
+      <div class="admin-modal-head">
+        <strong>Create New Exhibition Event</strong>
+        <button class="btn-icon-close" onclick="TenantAdminApp.closeModal('modal-add-event')">&times;</button>
+      </div>
+      <form onsubmit="TenantAdminApp.saveEvent(event)">
+        <div class="admin-modal-body">
+          <div class="form-group">
+            <label for="ev-name-inp">Event / Trade Show Name *</label>
+            <input class="form-control" id="ev-name-inp" type="text" placeholder="e.g. International Bakery Expo 2026" required>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="ev-type-inp">Event Type</label>
+              <select class="form-control" id="ev-type-inp">
+                <option value="Trade Exhibition">Trade Exhibition</option>
+                <option value="Industry Summit">Industry Summit</option>
+                <option value="Dealer Meet">Dealer Meet</option>
+                <option value="Product Launch">Product Launch</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="ev-dates-inp">Event Dates *</label>
+              <input class="form-control" id="ev-dates-inp" type="text" placeholder="e.g. 15-18 Dec 2026" required>
+            </div>
+          </div>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="ev-venue-inp">Venue / Location *</label>
+              <input class="form-control" id="ev-venue-inp" type="text" placeholder="e.g. BIEC, Bengaluru" required>
+            </div>
+            <div class="form-group">
+              <label for="ev-booth-inp">Stall / Booth Number</label>
+              <input class="form-control" id="ev-booth-inp" type="text" placeholder="e.g. Hall 2, Stall B-42">
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="ev-desc-inp">Event Description &amp; Objectives</label>
+            <textarea class="form-control" id="ev-desc-inp" rows="2" placeholder="Describe exhibition focus, showcase products, and target lead goals..."></textarea>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+            <button type="button" class="btn-secondary" onclick="TenantAdminApp.closeModal('modal-add-event')">Cancel</button>
+            <button type="submit" class="btn-primary">Create Event</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ADD / EDIT CATEGORY -->
+  <div class="admin-modal-backdrop" id="modal-category" onclick="if(event.target===this) TenantAdminApp.closeModal('modal-category')">
+    <div class="admin-modal-box">
+      <div class="admin-modal-head">
+        <strong id="cat-modal-title">Add Category</strong>
+        <button class="btn-icon-close" onclick="TenantAdminApp.closeModal('modal-category')">&times;</button>
+      </div>
+      <form class="admin-modal-body" onsubmit="TenantAdminApp.saveCategory(event)">
+        <input type="hidden" id="cat-edit-id">
+        <div class="form-group">
+          <label for="cat-name-inp">Category Name *</label>
+          <input class="form-control" id="cat-name-inp" type="text" required>
+        </div>
+        <div class="form-group">
+          <label for="cat-desc-inp">Description</label>
+          <textarea class="form-control" id="cat-desc-inp" rows="2"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button type="button" class="btn-secondary" onclick="TenantAdminApp.closeModal('modal-category')">Cancel</button>
+          <button type="submit" class="btn-primary">Save Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD / ADD CATALOGUE DOCUMENT -->
+  <div class="admin-modal-backdrop" id="modal-catalogue" onclick="if(event.target===this) TenantAdminApp.closeModal('modal-catalogue')">
+    <div class="admin-modal-box">
+      <div class="admin-modal-head">
+        <strong>Upload Brochure / Catalogue</strong>
+        <button class="btn-icon-close" onclick="TenantAdminApp.closeModal('modal-catalogue')">&times;</button>
+      </div>
+      <form class="admin-modal-body" onsubmit="TenantAdminApp.saveCatalogue(event)">
+        <div class="form-group">
+          <label>Upload Document File (PDF, DOCX, PPTX, Images)</label>
+          <label class="file-dropzone" for="doc-file-inp" id="doc-dropzone">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <span class="dropzone-title" id="doc-dropzone-title">Click to choose a file from your device</span>
+            <span class="dropzone-sub" id="doc-dropzone-sub">Stored securely in local vault &middot; Syncs to Public Card Catalogue</span>
+          </label>
+          <input type="file" id="doc-file-inp" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.webp" style="display:none;" onchange="TenantAdminApp.handleCatalogueFilePick(this)">
+        </div>
+
+        <div class="form-group">
+          <label for="doc-name-inp">Document Title *</label>
+          <input class="form-control" id="doc-name-inp" type="text" placeholder="e.g. Commercial Mixers Brochure 2026" required>
+        </div>
+
+        <div class="form-group">
+          <label for="doc-url-inp">Or External Hosted PDF Link (Optional)</label>
+          <input class="form-control" id="doc-url-inp" type="url" placeholder="https://company.com/brochure.pdf">
+        </div>
+
+        <div class="form-group">
+          <label for="doc-pages-inp">Notes / Page Count (Optional)</label>
+          <input class="form-control" id="doc-pages-inp" type="text" placeholder="e.g. 16 Pages &middot; Rev 2026">
+        </div>
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+          <button type="button" class="btn-secondary" onclick="TenantAdminApp.closeModal('modal-catalogue')">Cancel</button>
+          <button type="submit" class="btn-primary" id="btn-save-catalogue">Upload &amp; Publish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: RBAC ACCOUNT & ROLE SWITCHER -->
+  <div class="admin-modal-backdrop" id="modal-admin-auth" onclick="if(event.target===this) TenantAdminApp.closeModal('modal-admin-auth')">
+    <div class="admin-modal-box">
+      <div class="admin-modal-head">
+        <strong>Active Session &amp; Role (RBAC)</strong>
+        <button class="btn-icon-close" onclick="TenantAdminApp.closeModal('modal-admin-auth')">&times;</button>
+      </div>
+      <div class="admin-modal-body">
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <a class="btn-secondary" href="login.html" style="text-decoration:none;justify-content:center;">Switch Account</a>
+          <button class="btn-primary" onclick="TenantAdminApp.signOut()" style="background:#ef4444;">Sign Out</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="qr-engine.js"></script>
+  <script src="platform-core.js"></script>
+  <script src="tenant-admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "rotowagon-tenant-admin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "RotoWagon Equipment — Dedicated Tenant Business & Machinery Operations Console",
+  "scripts": {
+    "start": "npx serve ."
+  }
+}
